@@ -11,10 +11,10 @@ uint64
 sys_exit(void)
 {
   int n;
-  if(argint(0, &n) < 0)
+  if (argint(0, &n) < 0)
     return -1;
   exit(n);
-  return 0;  // not reached
+  return 0; // not reached
 }
 
 uint64
@@ -33,7 +33,7 @@ uint64
 sys_wait(void)
 {
   uint64 p;
-  if(argaddr(0, &p) < 0)
+  if (argaddr(0, &p) < 0)
     return -1;
   return wait(p);
 }
@@ -44,10 +44,10 @@ sys_sbrk(void)
   int addr;
   int n;
 
-  if(argint(0, &n) < 0)
+  if (argint(0, &n) < 0)
     return -1;
   addr = myproc()->sz;
-  if(growproc(n) < 0)
+  if (growproc(n) < 0)
     return -1;
   return addr;
 }
@@ -58,18 +58,21 @@ sys_sleep(void)
   int n;
   uint ticks0;
 
-  if(argint(0, &n) < 0)
+  if (argint(0, &n) < 0)
     return -1;
   acquire(&tickslock);
   ticks0 = ticks;
-  while(ticks - ticks0 < n){
-    if(myproc()->killed){
+  while (ticks - ticks0 < n)
+  {
+    if (myproc()->killed)
+    {
       release(&tickslock);
       return -1;
     }
     sleep(&ticks, &tickslock);
   }
   release(&tickslock);
+  backtrace();
   return 0;
 }
 
@@ -78,7 +81,7 @@ sys_kill(void)
 {
   int pid;
 
-  if(argint(0, &pid) < 0)
+  if (argint(0, &pid) < 0)
     return -1;
   return kill(pid);
 }
@@ -94,4 +97,34 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+uint64
+sys_sigalarm(void)
+{
+  int n;
+  uint64 p;
+  if (argint(0, &n) < 0 || argaddr(1, &p) < 0)
+    return -1;
+  myproc()->tick = n;
+  myproc()->tickNum = n;
+  myproc()->use_alarm = n;
+  myproc()->alarm = p;
+  return 0;
+}
+uint64
+sys_sigreturn(void)
+{
+  struct proc *p = myproc();
+  // printf("%d\n", p->trapframe->kernel_hartid == p->backup->kernel_hartid);
+  // printf("%d\n", p->trapframe->kernel_satp == p->backup->kernel_satp);
+  // printf("%d\n", p->trapframe->kernel_sp == p->backup->kernel_sp);
+  // printf("%d\n", p->trapframe->kernel_trap == p->backup->kernel_trap);
+  // acquire(&p->lock);
+  *p->trapframe = *p->backup;
+  // printf("%p\n", p->backup->epc);
+  // p->trapframe->epc += 4;
+  // release(&p->lock);
+  p->tick = p->tickNum;
+  return 0;
 }
